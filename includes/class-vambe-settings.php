@@ -64,7 +64,7 @@ class Vambe_Settings {
             <div class="vambe-header">
                 <div class="vambe-logo">
                     <?php 
-                    $svg_path = VAMBE_PLUGIN_URL . 'assets/images/vambe-logo.svg';
+                    $svg_path = VAMBE_TEMP_DIR . 'assets/images/vambe-logo.svg';
                     echo file_get_contents($svg_path); 
                     ?>
                 </div>

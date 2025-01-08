@@ -41,14 +41,14 @@ function vambe_get_api_key() {
 }
 
 if ( ! class_exists( 'Vambe_For_WooCommerce' ) ) {
-	include_once VAMBE_TEMP_DIR. '/includes/class-vambe-for-wc.php';
+	include_once VAMBE_TEMP_DIR. '/class-vambe-for-wc.php';
 
 	// Initialize the plugin
 	add_action( 'plugins_loaded', array( 'Vambe_For_WooCommerce', 'init' ) );
 }
 
 if ( ! class_exists( 'Vambe_Cart_Tracker' ) ) {
-	include_once VAMBE_TEMP_DIR. '/includes/class-vambe-cart-tracker.php';
+	include_once VAMBE_TEMP_DIR. '/class-vambe-cart-tracker.php';
 
 	// Initialize the plugin
 	add_action( 'plugins_loaded', array( 'Vambe_Cart_Tracker', 'init' ) );

@@ -33,7 +33,7 @@ class Vambe_For_WooCommerce {
 		load_plugin_textdomain(
 			'add-multiple-product-wc-cart',
 			false,
-			VAMBE_PLUGIN_URL . 'languages/'
+			VAMBE_TEMP_DIR . 'languages/'
 		);
 	}
 
