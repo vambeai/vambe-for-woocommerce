@@ -17,8 +17,6 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'VAMBE_FOR_WOOCOMMERCE_VERSION', '1.0.0' );
-define( 'VAMBE_FOR_WOOCOMMERCE_PLUGIN_FILE', __FILE__ );
 
 define('VAMBE_FOR_WOOCOMMERCE_RECOVER_API_ENDPOINT', 'https://webhook.site/36f3e649-4534-4f3b-85fb-4bedc4d55758');
 

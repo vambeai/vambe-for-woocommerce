@@ -15,6 +15,9 @@
 
 defined('ABSPATH') || exit;
 
+// Plugin constants
+define('VAMBE_FOR_WOOCOMMERCE_VERSION', '1.0.0');
+define( 'VAMBE_FOR_WOOCOMMERCE_PLUGIN_FILE', __FILE__ );
 
 
 if (!class_exists('Vambe_Loader')) {
