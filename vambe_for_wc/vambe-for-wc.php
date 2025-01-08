@@ -29,6 +29,7 @@ Vambe_Loader::init();
 
 // Now define the constant after initialization
 define('VAMBE_TEMP_DIR', Vambe_Loader::get_temp_dir());
+define('VAMBE_PLUGIN_URL', VAMBE_TEMP_DIR);
 
 
 function vambe_get_cart_timeout() {
