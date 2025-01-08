@@ -25,7 +25,8 @@ define('VAMBE_FOR_WOOCOMMERCE_RECOVER_API_ENDPOINT', 'https://webhook.site/36f3e
 
 define('VAMBE_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-require_once VAMBE_FOR_WOOCOMMERCE_PATH . 'includes/class-vambe-settings.php';
+
+require_once VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH . 'includes/class-vambe-settings.php';
 Vambe_Settings::get_instance();
 
 function vambe_get_cart_timeout() {

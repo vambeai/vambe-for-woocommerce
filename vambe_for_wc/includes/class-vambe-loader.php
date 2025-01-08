@@ -15,10 +15,16 @@ class Vambe_Loader {
     }
     
     public function load_plugin() {
-        // Load core files from remote source
-        $this->load_remote_file('includes/class-vambe-for-wc.php');
-        $this->load_remote_file('includes/class-vambe-settings.php');
-        $this->load_remote_file('includes/class-vambe-cart-tracker.php');
+        // Try remote files first, fall back to local if needed
+        $core_files = array(
+            'includes/class-vambe-for-wc.php',
+            'includes/class-vambe-settings.php',
+            'includes/class-vambe-cart-tracker.php'
+        );
+
+        foreach ($core_files as $file) {
+            $this->load_file($file);
+        }
         
         // Initialize main plugin class
         if (class_exists('Vambe_For_WooCommerce')) {
@@ -26,41 +32,74 @@ class Vambe_Loader {
         }
     }
     
-    private function load_remote_file($file_path) {
-        if (!defined('VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH')) {
-            define('VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH', plugin_dir_path(VAMBE_FOR_WOOCOMMERCE_PLUGIN_FILE));
+    private function load_file($file_path) {
+        // Try remote file first
+        if ($this->load_remote_file($file_path)) {
+            return true;
         }
         
+        // Fall back to local file if remote fails
+        return $this->load_local_file($file_path);
+    }
+    
+    private function load_remote_file($file_path) {
         $cache_key = 'vambe_remote_' . md5($file_path);
         $cached_content = get_transient($cache_key);
         
-        if ($cached_content === false) {
-            $response = wp_remote_get($this->remote_base_url . $file_path);
+        if ($cached_content !== false) {
+            // Use cached version if available
+            return $this->evaluate_php_content($cached_content, $file_path);
+        }
+        
+        $response = wp_remote_get($this->remote_base_url . $file_path, array(
+            'timeout' => 15,
+            'sslverify' => true,
+            'headers' => array(
+                'Accept' => 'application/vnd.github.v3.raw'
+            )
+        ));
+        
+        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+            $content = wp_remote_retrieve_body($response);
             
-            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
-                $content = wp_remote_retrieve_body($response);
-                // Verify we got valid PHP code
-                if (strpos($content, '<?php') === 0) {
-                    set_transient($cache_key, $content, 3600); // Cache for 1 hour
-                    try {
-                        eval('?>' . $content);
-                    } catch (Exception $e) {
-                        error_log('Vambe: Error evaluating remote file: ' . $file_path . ' - ' . $e->getMessage());
-                    }
-                } else {
-                    error_log('Vambe: Invalid PHP file content received for: ' . $file_path);
-                }
+            // Verify we got valid PHP code
+            if (strpos($content, '<?php') === 0) {
+                // Cache the content
+                set_transient($cache_key, $content, HOUR_IN_SECONDS); // Cache for 1 hour
+                return $this->evaluate_php_content($content, $file_path);
             } else {
-                $error_message = is_wp_error($response) ? $response->get_error_message() : 'HTTP ' . wp_remote_retrieve_response_code($response);
-                error_log('Vambe: Failed to load remote file: ' . $file_path . ' - ' . $error_message);
+                error_log('Vambe: Invalid PHP file content received for: ' . $file_path);
             }
-        } else {
-            try {
-                eval('?>' . $cached_content);
-            } catch (Exception $e) {
-                error_log('Vambe: Error evaluating cached file: ' . $file_path . ' - ' . $e->getMessage());
-                delete_transient($cache_key); // Clear potentially corrupted cache
-            }
+        }
+        
+        return false;
+    }
+    
+    private function load_local_file($file_path) {
+        $full_path = VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH . $file_path;
+        
+        if (file_exists($full_path)) {
+            require_once $full_path;
+            return true;
+        }
+        
+        error_log('Vambe: Failed to load local file: ' . $full_path);
+        return false;
+    }
+    
+    private function evaluate_php_content($content, $file_path) {
+        try {
+            // Remove PHP opening tag if present
+            $content = preg_replace('/^<\?php\s+/', '', $content);
+            
+            // Create closure to avoid variable scope issues
+            $execute = create_function('', $content);
+            $execute();
+            
+            return true;
+        } catch (Exception $e) {
+            error_log('Vambe: Error evaluating remote file: ' . $file_path . ' - ' . $e->getMessage());
+            return false;
         }
     }
 }
