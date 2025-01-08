@@ -37,12 +37,12 @@ class Vambe_For_WooCommerce {
 		load_plugin_textdomain(
 			'add-multiple-product-wc-cart',
 			false,
-			VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH . 'languages/'
+			VAMBE_PLUGIN_URL . 'languages/'
 		);
 	}
 
 	private static function init_cart_tracker() {
-		require_once VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH . 'includes/class-vambe-cart-tracker.php';
+		require_once VAMBE_PLUGIN_URL . 'includes/class-vambe-cart-tracker.php';
 		self::$cart_tracker = new Vambe_Cart_Tracker();
 	}
 
