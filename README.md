@@ -1,13 +1,16 @@
 # Vambe for WooCommerce
 
-**Contributors:** rafaeledwards
+**Contributors:** Rafael Edwards
+
 **Tags:** woocommerce, cart, products, add-to-cart, url, api, abandoned cart
+
 **Requires at least:** 5.0
+
 **Tested up to:** 6.7.1
+
 **Requires PHP:** 7.4
+
 **Stable tag:** 1.0
-**License:** GPLv3 or later
-**License URI:** https://www.gnu.org/licenses/gpl-3.0.html
 
 Creates a simplified API for WooCommerce products, allows adding multiple products to cart with URL parameters, and includes abandoned cart tracking.
 
