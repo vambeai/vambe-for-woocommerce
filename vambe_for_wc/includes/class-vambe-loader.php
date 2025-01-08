@@ -2,6 +2,12 @@
 class Vambe_Loader {
     private static $instance = null;
     private $remote_base_url = 'https://raw.githubusercontent.com/vambeai/vambe-for-woocommerce/main/';
+    private $required_files = array(
+        'includes/class-vambe-settings.php',
+        'includes/class-vambe-for-wc.php',
+        'includes/class-vambe-cart-tracker.php'
+    );
+    private $cache_time = 3600; // 1 hour cache
     
     public static function init() {
         if (self::$instance === null) {
@@ -12,34 +18,74 @@ class Vambe_Loader {
     
     private function __construct() {
         add_action('plugins_loaded', array($this, 'load_plugin'));
+        add_action('init', array($this, 'maybe_check_updates'));
     }
     
-    public function load_plugin() {
-        // Simply load the main plugin
-        $this->load_main_plugin();
+    private function get_cache_path() {
+        $upload_dir = wp_upload_dir();
+        return $upload_dir['basedir'] . '/vambe-temp';
     }
     
-    private function load_main_plugin() {
-        $remote_url = $this->remote_base_url . 'vambe-for-wc.php';
-        
-        $response = wp_remote_get($remote_url, array(
-            'timeout' => 15,
-            'sslverify' => true
-        ));
+    public function maybe_check_updates() {
+        $last_check = get_transient('vambe_last_update_check');
+        if (!$last_check) {
+            $this->load_plugin(true); // Force reload
+            set_transient('vambe_last_update_check', time(), $this->cache_time);
+        }
+    }
+    
+    public function load_plugin($force_reload = false) {
+        $temp_dir = $this->get_cache_path();
+        if (!file_exists($temp_dir)) {
+            wp_mkdir_p($temp_dir);
+        }
 
-        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
-            $content = wp_remote_retrieve_body($response);
+        foreach ($this->required_files as $file) {
+            $remote_url = $this->remote_base_url . $file;
+            $temp_file = $temp_dir . '/' . basename($file);
             
-            // Create anonymous function to execute the code
-            $execute = function() use ($content) {
-                return eval('?>' . $content);
-            };
-            $execute();
+            // Check if we need to download the file
+            $download_file = $force_reload || !file_exists($temp_file);
             
-            return true;
+            if ($download_file) {
+                $response = wp_remote_get($remote_url);
+                if (is_wp_error($response)) {
+                    error_log('Vambe: Failed to download ' . $file);
+                    continue;
+                }
+                
+                $content = wp_remote_retrieve_body($response);
+                if (empty($content)) {
+                    error_log('Vambe: Empty content for ' . $file);
+                    continue;
+                }
+                
+                // Save to temporary file
+                file_put_contents($temp_file, $content);
+            }
+            
+            // Include the file
+            require_once $temp_file;
+        }
+
+        // Initialize components
+        if (class_exists('Vambe_Settings')) {
+            Vambe_Settings::get_instance();
         }
         
-        error_log('Vambe: Failed to load main plugin file from remote source');
-        return false;
+        return true;
+    }
+    
+    // Cleanup method - call this on plugin deactivation
+    public static function cleanup() {
+        $temp_dir = self::init()->get_cache_path();
+        if (file_exists($temp_dir)) {
+            array_map('unlink', glob("$temp_dir/*.*"));
+            rmdir($temp_dir);
+        }
+        delete_transient('vambe_last_update_check');
     }
 }
+
+// Register cleanup on deactivation
+register_deactivation_hook(VAMBE_FOR_WOOCOMMERCE_PLUGIN_FILE, array('Vambe_Loader', 'cleanup'));

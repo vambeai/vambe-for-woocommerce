@@ -15,8 +15,7 @@
 
 defined('ABSPATH') || exit;
 
-// Plugin constants
-define('VAMBE_FOR_WOOCOMMERCE_VERSION', '1.0.0');
+
 
 if (!class_exists('Vambe_Loader')) {
     include_once __DIR__ . '/includes/class-vambe-loader.php';
