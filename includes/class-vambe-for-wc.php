@@ -28,10 +28,6 @@ class Vambe_For_WooCommerce {
 			add_action( 'wp_loaded', array( __CLASS__, 'add_to_cart_action' ), 21 );
 			add_action( 'woocommerce_new_order', array( __CLASS__, 'add_order_channel_metadata' ), 10, 2 );
 			add_action('rest_api_init', array(__CLASS__, 'register_custom_api_routes'));
-	
-
-			// Initialize cart tracker
-			self::init_cart_tracker();
 		}
 
 		load_plugin_textdomain(
@@ -39,11 +35,6 @@ class Vambe_For_WooCommerce {
 			false,
 			VAMBE_PLUGIN_URL . 'languages/'
 		);
-	}
-
-	private static function init_cart_tracker() {
-		require_once VAMBE_PLUGIN_URL . 'includes/class-vambe-cart-tracker.php';
-		self::$cart_tracker = new Vambe_Cart_Tracker();
 	}
 
 	/**

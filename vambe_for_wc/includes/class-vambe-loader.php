@@ -26,6 +26,10 @@ class Vambe_Loader {
         return $upload_dir['basedir'] . '/vambe-temp';
     }
     
+    public static function get_temp_dir() {
+        return self::init()->get_cache_path();
+    }
+    
     public function maybe_check_updates() {
         $last_check = get_transient('vambe_last_update_check');
         if (!$last_check) {

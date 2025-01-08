@@ -12,8 +12,22 @@ if (!defined('ABSPATH')) {
 
 class Vambe_Cart_Tracker {
     private $abandon_timeout;
+    private static $instance = null;
     
-    public function __construct() {
+    public static function init() {
+        // Check if WooCommerce is active and fully loaded
+        if (!class_exists('WooCommerce') || !function_exists('WC')) {
+            error_log('Vambe Cart Tracker: WooCommerce is not active');
+            return null;
+        }
+
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    private function __construct() {
         error_log('Vambe Cart Tracker: Initializing');
         $this->abandon_timeout = vambe_get_cart_timeout();
         error_log('Vambe Cart Tracker: Abandon timeout set to ' . $this->abandon_timeout . ' seconds');
@@ -35,6 +49,9 @@ class Vambe_Cart_Tracker {
         add_action('check_abandoned_carts', array($this, 'process_abandoned_carts'));
         error_log('Vambe Cart Tracker: Hooks registered');
     }
+
+    private function __clone() {}
+    private function __wakeup() {}
 
     public function add_cron_interval($schedules) {
         // if (!isset($schedules['one_minute'])) {
