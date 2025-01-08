@@ -92,8 +92,10 @@ class Vambe_Loader {
             // Remove PHP opening tag if present
             $content = preg_replace('/^<\?php\s+/', '', $content);
             
-            // Create closure to avoid variable scope issues
-            $execute = create_function('', $content);
+            // Create anonymous function instead of using create_function
+            $execute = function() use ($content) {
+                return eval($content);
+            };
             $execute();
             
             return true;
