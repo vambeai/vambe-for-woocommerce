@@ -16,24 +16,33 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Vambe_For_WooCommerce {
 	const PRODUCT_QTY_MINIMUM    = 1;
-	const PRODUCT_TYPE_WHITELIST = array( 'simple', 'variable' );
+	const PRODUCT_TYPE_WHITELIST = array( 'simple', 'variable', 'external' );
 
-	private static $cart_tracker = null;
+	// Prevent instantiation
+	private function __construct() {}
+	
+	// Prevent cloning
+	private function __clone() {}
+	
+	// Prevent unserialize
+	private function __wakeup() {}
 
 	/**
 	 * Initialize the plugin public actions.
 	 */
 	public static function init() {
-		if ( static::is_woocommerce_activated() ) {
-			add_action( 'wp_loaded', array( __CLASS__, 'add_to_cart_action' ), 21 );
-			add_action( 'woocommerce_new_order', array( __CLASS__, 'add_order_channel_metadata' ), 10, 2 );
-			add_action('rest_api_init', array(__CLASS__, 'register_custom_api_routes'));
+		if ( ! static::is_woocommerce_activated() ) {
+			return;
 		}
+
+		add_action( 'wp_loaded', array( __CLASS__, 'add_to_cart_action' ), 21 );
+		add_action( 'woocommerce_new_order', array( __CLASS__, 'add_order_channel_metadata' ), 10, 2 );
+		add_action( 'rest_api_init', array( __CLASS__, 'register_custom_api_routes' ) );
 
 		load_plugin_textdomain(
 			'add-multiple-product-wc-cart',
 			false,
-			VAMBE_TEMP_DIR . 'languages/'
+			VAMBE_FOR_WOOCOMMERCE_PLUGIN_PATH . 'languages/'
 		);
 	}
 
@@ -64,14 +73,14 @@ class Vambe_For_WooCommerce {
 
 		$product_params = sanitize_text_field( wp_unslash( $_REQUEST['add-vambe-cart'] ) );
 
-		if ( preg_match( '/[^\d\s,_:]/', $product_params ) ) {
+		if ( preg_match( '/[^\d\s,:]/', $product_params ) ) {
 			return;
 		}
 
 		WC()->cart->empty_cart();
 
 		setcookie('vambe_cart', 'true', [
-			'expires' => time() + (86400 * 3),
+			'expires' => time() + (86400 * 7),
 			'path' => COOKIEPATH,
 			'domain' => COOKIE_DOMAIN,
 			'secure' => is_ssl(),
@@ -81,40 +90,42 @@ class Vambe_For_WooCommerce {
 
 		wc_nocache_headers();
 
-		$product_params              = trim( $product_params );
-		$added_to_cart               = array();
+		$product_params = trim( $product_params );
+		$added_to_cart = array();
 		$something_was_added_to_cart = false;
 
-		if ( preg_match_all( '/(\d+)(?:_(\d+))?(?::(\d+))?/', $product_params, $products, PREG_SET_ORDER ) ) {
+		if ( preg_match_all( '/(\d+)(?::(\d+))?/', $product_params, $products, PREG_SET_ORDER ) ) {
 			if ( ! empty( $products ) ) {
 				remove_action( 'woocommerce_add_to_cart', array( WC()->cart, 'calculate_totals' ), 20, 0 );
 
 				foreach ( $products as $product_data ) {
-					$product_id       = apply_filters( 'woocommerce_add_to_cart_product_id', absint( $product_data[1] ) );
-					$variation_id     = isset($product_data[2]) ? absint($product_data[2]) : 0;
-					$product_qty      = isset($product_data[3]) ? wc_stock_amount( absint( $product_data[3] ) ) : static::PRODUCT_QTY_MINIMUM;
-					$product_instance = wc_get_product( $product_id );
+					$id = absint($product_data[1]);
+					$qty = isset($product_data[2]) ? wc_stock_amount(absint($product_data[2])) : static::PRODUCT_QTY_MINIMUM;
+					
+					// Try to get the product directly first
+					$product = wc_get_product($id);
+					
+					if (!$product) {
+						continue;
+					}
 
-					if ( $product_instance && in_array( $product_instance->get_type(), static::PRODUCT_TYPE_WHITELIST, true ) ) {
-						$add_to_cart_handler = apply_filters( 'add_multiple_to_cart_cart_handler', $product_instance->get_type(), $product_instance );
+					// Determine if this is a variation or a simple product
+					if ($product->is_type('variation')) {
+						$variation_id = $id;
+						$product_id = $product->get_parent_id();
+						$variation_data = wc_get_product_variation_attributes($variation_id);
+					} else {
+						$product_id = $id;
+						$variation_id = 0;
+						$variation_data = array();
+					}
 
-						if ( 'simple' === $add_to_cart_handler || 'variable' === $add_to_cart_handler ) {
-							$variation_data = array();
-							if ('variable' === $add_to_cart_handler && $variation_id) {
-								$variation = wc_get_product($variation_id);
-								if ($variation && $variation->is_purchasable()) {
-									$variation_data = wc_get_product_variation_attributes($variation_id);
-								} else {
-									continue; // Skip if variation is not valid
-								}
-							}
+					if (in_array($product->get_type(), static::PRODUCT_TYPE_WHITELIST, true) || $product->is_type('variation')) {
+						$passed_validation = apply_filters('woocommerce_add_to_cart_validation', true, $product_id, $qty, $variation_id, $variation_data);
 
-							$passed_validation = apply_filters( 'woocommerce_add_to_cart_validation', true, $product_id, $product_qty, $variation_id, $variation_data );
-
-							if ( $passed_validation && ( false !== WC()->cart->add_to_cart( $product_id, $product_qty, $variation_id, $variation_data ) ) ) {
-								$something_was_added_to_cart  = true;
-								$added_to_cart[ $product_id ] = $product_qty;
-							}
+						if ($passed_validation && (false !== WC()->cart->add_to_cart($product_id, $qty, $variation_id, $variation_data))) {
+							$something_was_added_to_cart = true;
+							$added_to_cart[$id] = $qty;
 						}
 					}
 				}
@@ -138,11 +149,36 @@ class Vambe_For_WooCommerce {
 							exit;
 					}
 
-					// Add checkout ID to cookie if present in the URL
+					// Add checkout ID to cookie if present in the URL (for abandoned cart tracking)
 					if (!empty($_REQUEST['checkout-id'])) {
 						$checkout_id = sanitize_text_field($_REQUEST['checkout-id']);
 						setcookie('vambe_checkout_id', $checkout_id, [
-							'expires' => time() + (86400 * 3),
+							'expires' => time() + (86400 * 7),
+							'path' => COOKIEPATH,
+							'domain' => COOKIE_DOMAIN,
+							'secure' => is_ssl(),
+							'httponly' => true,
+							'samesite' => 'Strict'
+						]);
+					}
+
+					// Add assistant ID to cookie if present in the URL (for direct orders)
+					if (!empty($_REQUEST['assistant-id'])) {
+						$assistant_id = sanitize_text_field($_REQUEST['assistant-id']);
+						setcookie('vambe_assistant_id', $assistant_id, [
+							'expires' => time() + (86400 * 7),
+							'path' => COOKIEPATH,
+							'domain' => COOKIE_DOMAIN,
+							'secure' => is_ssl(),
+							'httponly' => true,
+							'samesite' => 'Strict'
+						]);
+					}
+					// Add contact ID to cookie if present in the URL (for direct orders)
+					if (!empty($_REQUEST['contact-id'])) {
+						$contact_id = sanitize_text_field($_REQUEST['contact-id']);
+						setcookie('vambe_contact_id', $contact_id, [
+							'expires' => time() + (86400 * 7),
 							'path' => COOKIEPATH,
 							'domain' => COOKIE_DOMAIN,
 							'secure' => is_ssl(),
@@ -175,13 +211,25 @@ class Vambe_For_WooCommerce {
 				$checkout_id = sanitize_text_field($_COOKIE['vambe_checkout_id']);
 				$order->update_meta_data('vambe_checkout_id', $checkout_id);
 			}
+
+			// Add assistant ID from cookie
+			if (isset($_COOKIE['vambe_assistant_id'])) {
+				$assistant_id = sanitize_text_field($_COOKIE['vambe_assistant_id']);
+				$order->update_meta_data('vambe_assistant_id', $assistant_id);
+			}
+
+			// Add contact ID from cookie
+			if (isset($_COOKIE['vambe_contact_id'])) {
+				$contact_id = sanitize_text_field($_COOKIE['vambe_contact_id']);
+				$order->update_meta_data('vambe_contact_id', $contact_id);
+			}
 		}
 
 		$order->save();
 		error_log('Order metadata saved.');
 
 		// Clear the cookies
-		$cookies_to_clear = ['vambe_cart', 'vambe_checkout_id'];
+		$cookies_to_clear = ['vambe_cart', 'vambe_checkout_id', 'vambe_assistant_id', 'vambe_contact_id'];
 		foreach ($cookies_to_clear as $cookie_name) {
 			setcookie($cookie_name, '', [
 				'expires' => time() - 3600,
@@ -229,6 +277,15 @@ class Vambe_For_WooCommerce {
 				return current_user_can('read');
 			}
 		));
+
+		// Add new stock verification endpoint
+		register_rest_route('wc/v3', '/vambe-stock', array(
+			'methods' => 'GET',
+			'callback' => array(__CLASS__, 'get_products_stock'),
+			'permission_callback' => function () {
+				return current_user_can('read');
+			}
+		));
 	}
 
 	/**
@@ -239,23 +296,44 @@ class Vambe_For_WooCommerce {
 	 */
 	public static function get_simplified_products($request) {
 		try {
+			$page = $request->get_param('page') ? absint($request->get_param('page')) : 1;
+			$per_page = $request->get_param('per_page') ? absint($request->get_param('per_page')) : 10;
+
 			$args = array(
 				'status' => 'publish',
-				'limit' => -1,
+				'limit' => $per_page,
+				'page' => $page,
+				'paginate' => true,
+				'orderby' => 'ID',
+				'order' => 'DESC',
+				// Add post type to ensure we're getting products
+				'type' => array_merge(['simple', 'variable', 'external'], array_diff(wc_get_product_types(), ['grouped']))
 			);
 
 			if (!function_exists('wc_get_products')) {
 				return new WP_Error('woocommerce_required', 'WooCommerce is not active', array('status' => 500));
 			}
 
-			$products = wc_get_products($args);
+			$products_query = wc_get_products($args);
+			$products = $products_query->products;
+
+			// Log the query results
+			error_log("Total products found: " . count($products));
+			error_log("Total pages: " . $products_query->max_num_pages);
+
 			$response_data = array();
 
 			foreach ($products as $product) {
-				if (!is_object($product)) continue;
+				if (!is_object($product)) {
+					error_log("Skipping invalid product (not an object)");
+					continue;
+				}
 				
 				// Skip grouped products
-				if ($product->is_type('grouped')) continue;
+				if ($product->is_type('grouped')) {
+					error_log("Skipping grouped product: " . $product->get_id());
+					continue;
+				}
 
 				$data = array(
 					'id' => $product->get_id(),
@@ -273,6 +351,7 @@ class Vambe_For_WooCommerce {
 					'onlineStoreUrl' => $product->get_permalink(),
 					'tags' => wp_get_post_terms($product->get_id(), 'product_tag', array('fields' => 'names')),
 					'categories' => wp_get_post_terms($product->get_id(), 'product_cat', array('fields' => 'names'))
+					// 'metadata' => get_post_meta($product->get_id())
 				);
 
 				// Handle variations if it's a variable product
@@ -294,6 +373,9 @@ class Vambe_For_WooCommerce {
 									'regular_price' => (float)$variation_obj->get_regular_price(),
 									'sale_price' => (float)$variation_obj->get_sale_price(),
 									'description' => $variation_obj->get_description(),
+									'image' => self::get_product_image($variation_obj),
+									'onlineStoreUrl' => $variation_obj->get_permalink()
+									// 'metadata' => get_post_meta($variation_id)
 								);
 								$attributes = array();
 								foreach ($variation_obj->get_variation_attributes() as $attribute_name => $attribute) {
@@ -337,6 +419,75 @@ class Vambe_For_WooCommerce {
 			return $image_data ? $image_data[0] : null;
 		}
 		return null;
+	}
+
+	/**
+	 * Handle stock verification endpoint
+	 *
+	 * @param WP_REST_Request $request Request object
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public static function get_products_stock($request) {
+		try {
+			$product_ids = $request->get_param('ids');
+			
+			if (empty($product_ids)) {
+				return new WP_Error('missing_ids', 'Product IDs are required', array('status' => 400));
+			}
+
+			// Convert comma-separated string to array if necessary
+			if (is_string($product_ids)) {
+				$product_ids = array_map('absint', explode(',', $product_ids));
+			}
+
+			$stock_data = array();
+
+			foreach ($product_ids as $product_id) {
+				$product = wc_get_product($product_id);
+				
+				if (!$product) {
+					$stock_data[$product_id] = array(
+						'error' => 'Product not found'
+					);
+					continue;
+				}
+
+				if ($product->is_type('variable')) {
+					$variations = $product->get_available_variations('objects');
+					$variation_stock = array();
+					
+					foreach ($variations as $variation) {
+						$variation_id = $variation->get_id();
+						$variation_obj = new WC_Product_Variation($variation_id);
+						
+						$variation_stock[$variation_id] = array(
+							'manage_stock' => $variation_obj->get_manage_stock(),
+							'stock_quantity' => $variation_obj->get_stock_quantity(),
+							'stock_status' => $variation_obj->get_stock_status(),
+							'is_in_stock' => $variation_obj->is_in_stock()
+						);
+					}
+
+					$stock_data[$product_id] = array(
+						'type' => 'variable',
+						'variations' => $variation_stock
+					);
+				} else {
+					$stock_data[$product_id] = array(
+						'type' => $product->get_type(),
+						'manage_stock' => $product->get_manage_stock(),
+						'stock_quantity' => $product->get_stock_quantity(),
+						'stock_status' => $product->get_stock_status(),
+						'is_in_stock' => $product->is_in_stock()
+					);
+				}
+			}
+
+			return new WP_REST_Response($stock_data, 200);
+
+		} catch (Exception $e) {
+			return new WP_Error('server_error', $e->getMessage(), array('status' => 500));
+		}
 	}
 
 }

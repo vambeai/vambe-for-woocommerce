@@ -7,16 +7,19 @@ if (!defined('ABSPATH')) {
 class Vambe_Settings {
     private static $instance = null;
 
-    public static function get_instance() {
+    public static function init() {
         if (self::$instance === null) {
             self::$instance = new self();
+            
+            // Admin hooks
+            add_action('admin_menu', array(self::$instance, 'add_settings_page'));
+            add_action('admin_init', array(self::$instance, 'register_settings'));
         }
         return self::$instance;
     }
 
     private function __construct() {
-        add_action('admin_menu', array($this, 'add_settings_page'));
-        add_action('admin_init', array($this, 'register_settings'));
+        // Basic initialization if needed
     }
 
     public function add_settings_page() {
@@ -64,7 +67,7 @@ class Vambe_Settings {
             <div class="vambe-header">
                 <div class="vambe-logo">
                     <?php 
-                    $svg_path = VAMBE_TEMP_DIR . 'assets/images/vambe-logo.svg';
+                    $svg_path = VAMBE_PLUGIN_URL . 'assets/images/vambe-logo.svg';
                     echo file_get_contents($svg_path); 
                     ?>
                 </div>

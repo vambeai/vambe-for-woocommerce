@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 class Vambe_Cart_Tracker {
     private $abandon_timeout;
     private static $instance = null;
-    
+
     public static function init() {
         // Check if WooCommerce is active and fully loaded
         if (!class_exists('WooCommerce') || !function_exists('WC')) {
@@ -23,6 +23,24 @@ class Vambe_Cart_Tracker {
 
         if (self::$instance === null) {
             self::$instance = new self();
+            
+            // Add custom cron interval
+            add_filter('cron_schedules', array(self::$instance, 'add_cron_interval'));
+            
+            // Cart tracking hooks
+            add_action('woocommerce_add_to_cart', array(self::$instance, 'track_cart_changes'));
+            add_action('woocommerce_cart_item_removed', array(self::$instance, 'track_cart_changes'));
+            add_action('woocommerce_cart_item_restored', array(self::$instance, 'track_cart_changes'));
+            add_action('woocommerce_after_cart_item_quantity_update', array(self::$instance, 'track_cart_changes'));
+            
+            // Order completion hook
+            add_action('woocommerce_new_order', array(self::$instance, 'clear_abandoned_cart'));
+            
+            // Abandoned cart check hooks
+            add_action('init', array(self::$instance, 'schedule_abandonment_check'));
+            add_action('check_abandoned_carts', array(self::$instance, 'process_abandoned_carts'));
+            
+            error_log('Vambe Cart Tracker: Hooks registered');
         }
         return self::$instance;
     }
@@ -31,26 +49,12 @@ class Vambe_Cart_Tracker {
         error_log('Vambe Cart Tracker: Initializing');
         $this->abandon_timeout = vambe_get_cart_timeout();
         error_log('Vambe Cart Tracker: Abandon timeout set to ' . $this->abandon_timeout . ' seconds');
-        
-        // Add custom cron interval
-        add_filter('cron_schedules', array($this, 'add_cron_interval'));
-        
-        // Track cart changes
-        add_action('woocommerce_add_to_cart', array($this, 'track_cart_changes'));
-        add_action('woocommerce_cart_item_removed', array($this, 'track_cart_changes'));
-        add_action('woocommerce_cart_item_restored', array($this, 'track_cart_changes'));
-        add_action('woocommerce_after_cart_item_quantity_update', array($this, 'track_cart_changes'));
-        
-        // Clear tracking on order completion
-        add_action('woocommerce_new_order', array($this, 'clear_abandoned_cart'));
-        
-        // Check for abandoned carts periodically
-        add_action('init', array($this, 'schedule_abandonment_check'));
-        add_action('check_abandoned_carts', array($this, 'process_abandoned_carts'));
-        error_log('Vambe Cart Tracker: Hooks registered');
     }
 
+    // Prevent cloning
     private function __clone() {}
+
+    // Prevent unserialize
     private function __wakeup() {}
 
     public function add_cron_interval($schedules) {
