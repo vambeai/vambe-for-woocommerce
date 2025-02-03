@@ -25,7 +25,7 @@ class Vambe_For_WooCommerce {
 	private function __clone() {}
 	
 	// Prevent unserialize
-	private function __wakeup() {}
+	public function __wakeup() {}
 
 	/**
 	 * Initialize the plugin public actions.
