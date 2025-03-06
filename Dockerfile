@@ -1,7 +1,6 @@
-FROM node:18-bullseye
+FROM node:18-alpine
 
 WORKDIR /app
-
 
 # Install pnpm
 RUN npm install -g pnpm
