@@ -265,12 +265,6 @@ export class PluginService {
       const stats = fs.statSync(zipPath);
       console.log(`[uploadZipFile] Zip file size: ${stats.size} bytes`);
 
-      // Read the file contents
-      const fileBuffer = fs.readFileSync(zipPath);
-      console.log(
-        `[uploadZipFile] Successfully read file buffer, size: ${fileBuffer.length} bytes`
-      );
-
       try {
         console.log(`[uploadZipFile] Attempting to upload to UploadThing...`);
 
@@ -278,14 +272,22 @@ export class PluginService {
         const timestamp = Date.now();
         const uniqueFilename = `vambe_for_wc_${timestamp}.zip`;
 
-        // Create a File object from the buffer
-        const file = new File([fileBuffer], uniqueFilename, {
-          type: "application/zip",
+        // Upload the file directly using the file path
+        console.log(`[uploadZipFile] Calling utapi.uploadFiles...`);
+
+        // Read the file content
+        const fileBuffer = fs.readFileSync(zipPath);
+
+        // Create a Blob from the file buffer
+        const blob = new Blob([fileBuffer], { type: "application/zip" });
+
+        // Create a File-like object that matches the FileEsque type
+        const fileObj = Object.assign(blob, {
+          name: uniqueFilename,
+          lastModified: Date.now(),
         });
 
-        // Upload the file to UploadThing
-        console.log(`[uploadZipFile] Calling utapi.uploadFiles...`);
-        const response = await this.utapi.uploadFiles([file]);
+        const response = await this.utapi.uploadFiles(fileObj);
         console.log(`[uploadZipFile] UploadThing response:`, response);
 
         if (response && response[0] && response[0].data) {
