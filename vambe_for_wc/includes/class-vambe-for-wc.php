@@ -62,6 +62,18 @@ class Vambe_For_WooCommerce {
 	 * @return void|false
 	 */
 	public static function add_to_cart_action() {
+		if ( !empty( $_REQUEST['utm_contact'] ) ) {
+			$contact_id = sanitize_text_field($_REQUEST['utm_contact']);
+					setcookie('vambe_utm_contact_id', $contact_id, [
+						'expires' => time() + (86400 * 7),
+						'path' => COOKIEPATH,
+						'domain' => COOKIE_DOMAIN,
+						'secure' => is_ssl(),
+						'httponly' => true,
+					'samesite' => 'Strict'
+					]);	
+		}
+
 		error_log('add_to_cart_action');
 		if ( empty( $_REQUEST['add-vambe-cart'] ) ) {
 			return;
@@ -139,16 +151,6 @@ class Vambe_For_WooCommerce {
 
 					WC()->cart->calculate_totals();
 
-					$url = apply_filters( 'add_multiple_to_cart_after_add_redirect_url', null, $added_to_cart );
-
-					if ( $url ) {
-							wp_safe_redirect( $url );
-							exit;
-					} elseif ( 'yes' === get_option( 'woocommerce_cart_redirect_after_add' ) ) {
-							wp_safe_redirect( wc_get_cart_url() );
-							exit;
-					}
-
 					// Add checkout ID to cookie if present in the URL (for abandoned cart tracking)
 					if (!empty($_REQUEST['checkout-id'])) {
 						$checkout_id = sanitize_text_field($_REQUEST['checkout-id']);
@@ -174,6 +176,7 @@ class Vambe_For_WooCommerce {
 							'samesite' => 'Strict'
 						]);
 					}
+
 					// Add contact ID to cookie if present in the URL (for direct orders)
 					if (!empty($_REQUEST['contact-id'])) {
 						$contact_id = sanitize_text_field($_REQUEST['contact-id']);
@@ -186,6 +189,9 @@ class Vambe_For_WooCommerce {
 							'samesite' => 'Strict'
 						]);
 					}
+
+					wp_safe_redirect( wc_get_cart_url() );
+					exit;
 				}
 			}
 		}
@@ -205,12 +211,7 @@ class Vambe_For_WooCommerce {
 		if ($vambe_order) {
 			$order->update_meta_data('_wc_order_attribution_utm_source', 'Vambe');
 			$order->update_meta_data('channel', 'Vambe');
-			
-			// Add checkout ID from cookie
-			if (isset($_COOKIE['vambe_checkout_id'])) {
-				$checkout_id = sanitize_text_field($_COOKIE['vambe_checkout_id']);
-				$order->update_meta_data('vambe_checkout_id', $checkout_id);
-			}
+		
 
 			// Add assistant ID from cookie
 			if (isset($_COOKIE['vambe_assistant_id'])) {
@@ -223,13 +224,24 @@ class Vambe_For_WooCommerce {
 				$contact_id = sanitize_text_field($_COOKIE['vambe_contact_id']);
 				$order->update_meta_data('vambe_contact_id', $contact_id);
 			}
+
+		}
+		// Add checkout ID from cookie
+		if (isset($_COOKIE['vambe_checkout_id'])) {
+			$checkout_id = sanitize_text_field($_COOKIE['vambe_checkout_id']);
+			$order->update_meta_data('vambe_checkout_id', $checkout_id);
+		}
+		// Add utm_contact from cookie
+		if (isset($_COOKIE['vambe_utm_contact_id'])) {
+			$utm_contact = sanitize_text_field($_COOKIE['vambe_utm_contact_id']);
+			$order->update_meta_data('vambe_utm_contact_id', $utm_contact);
 		}
 
 		$order->save();
 		error_log('Order metadata saved.');
 
 		// Clear the cookies
-		$cookies_to_clear = ['vambe_cart', 'vambe_checkout_id', 'vambe_assistant_id', 'vambe_contact_id'];
+		$cookies_to_clear = ['vambe_cart', 'vambe_checkout_id', 'vambe_assistant_id', 'vambe_contact_id', 'vambe_utm_contact_id'];
 		foreach ($cookies_to_clear as $cookie_name) {
 			setcookie($cookie_name, '', [
 				'expires' => time() - 3600,
