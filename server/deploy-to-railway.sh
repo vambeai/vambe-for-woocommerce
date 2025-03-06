@@ -25,6 +25,8 @@ echo "Copying project files..."
 cp "$PROJECT_ROOT/package.json" "$TEMP_DIR/"
 cp "$PROJECT_ROOT/pnpm-workspace.yaml" "$TEMP_DIR/"
 cp "$PROJECT_ROOT/railway.json" "$TEMP_DIR/"
+cp "$PROJECT_ROOT/Dockerfile" "$TEMP_DIR/"
+cp "$PROJECT_ROOT/.npmrc" "$TEMP_DIR/"
 
 # Create server directory in the temp directory
 echo "Creating server directory in the deployment package..."

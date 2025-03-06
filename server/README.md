@@ -36,11 +36,11 @@ This server provides functionality for generating customized Vambe WooCommerce p
 
    - Create a temporary deployment package with the proper monorepo structure
    - Include both the server and the vambe_for_wc plugin directory
-   - Install dependencies using pnpm
+   - Include the Dockerfile for containerized deployment
    - Deploy to Railway
    - Clean up temporary files
 
-### Option 2: Manual Deployment
+### Option 2: Manual Deployment with Docker
 
 1. Create a temporary directory for deployment
 2. Set up the monorepo structure:
@@ -49,12 +49,31 @@ This server provides functionality for generating customized Vambe WooCommerce p
    ├── package.json             # Root package.json with workspaces
    ├── pnpm-workspace.yaml      # PNPM workspace config
    ├── railway.json             # Railway config
+   ├── Dockerfile               # Docker configuration
    ├── .npmrc                   # PNPM config
    ├── server/                  # Server code
    └── vambe_for_wc/            # Plugin code
    ```
 3. Copy all necessary files maintaining this structure
 4. Deploy using the Railway CLI: `railway up`
+
+### How the Docker Deployment Works
+
+The deployment uses a Docker-based approach to ensure the plugin directory is properly included:
+
+1. The Dockerfile:
+
+   - Uses Node.js 18 Alpine as the base image
+   - Installs pnpm and project dependencies
+   - Builds the server application
+   - Copies the vambe_for_wc directory to both /app/vambe_for_wc and /vambe_for_wc
+   - Exposes port 8080 for the application
+   - Runs the server application
+
+2. This approach ensures that:
+   - The plugin directory is available in the expected locations
+   - All dependencies are properly installed
+   - The application can find the plugin directory at runtime
 
 ## Environment Variables
 
