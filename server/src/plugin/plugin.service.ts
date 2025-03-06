@@ -2,19 +2,23 @@ import {
   Injectable,
   BadRequestException,
   InternalServerErrorException,
+  OnModuleInit,
+  OnModuleDestroy,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { Cron } from "@nestjs/schedule";
 import * as fs from "fs";
 import * as path from "path";
 import * as AdmZip from "adm-zip";
-import { UTApi } from "uploadthing/server";
 
 @Injectable()
 export class PluginService {
   private readonly pluginPath: string;
-  private readonly utapi: UTApi;
+  private readonly downloadDir: string;
 
   constructor(private configService: ConfigService) {
+    // Initialize download directory
+    this.downloadDir = path.resolve(process.cwd(), "public", "download");
     // Path to the plugin directory relative to the current working directory
     // Try different paths to find the plugin directory
     const possiblePaths = [
@@ -53,8 +57,10 @@ export class PluginService {
       );
     }
 
-    // Initialize UploadThing API
-    this.utapi = new UTApi();
+    // Ensure the download directory exists
+    if (!fs.existsSync(this.downloadDir)) {
+      fs.mkdirSync(this.downloadDir, { recursive: true });
+    }
   }
 
   async generatePlugin(clientApiKey: string): Promise<string> {
@@ -252,6 +258,13 @@ export class PluginService {
     }
   }
 
+  // Run cleanup every hour using cron
+  @Cron("0 * * * *")
+  handleCronCleanup() {
+    console.log("[PluginService] Running scheduled cleanup via cron");
+    this.cleanupOldFiles();
+  }
+
   private async uploadZipFile(zipPath: string): Promise<string> {
     try {
       console.log(`[uploadZipFile] Starting file upload for: ${zipPath}`);
@@ -265,79 +278,76 @@ export class PluginService {
       const stats = fs.statSync(zipPath);
       console.log(`[uploadZipFile] Zip file size: ${stats.size} bytes`);
 
-      try {
-        console.log(`[uploadZipFile] Attempting to upload to UploadThing...`);
+      // Create a unique filename with timestamp
+      const timestamp = Date.now();
+      const uniqueFilename = `vambe_for_wc_${timestamp}.zip`;
 
-        // Create a unique filename for the upload
-        const timestamp = Date.now();
-        const uniqueFilename = `vambe_for_wc_${timestamp}.zip`;
+      // Create a local URL that can be used to download the file
+      const serverUrl =
+        this.configService.get<string>("SERVER_URL") || "http://localhost:3003";
+      const downloadPath = `/download/${uniqueFilename}`;
 
-        // Upload the file directly using the file path
-        console.log(`[uploadZipFile] Calling utapi.uploadFiles...`);
+      // Copy the zip file to the download directory with the unique filename
+      const publicZipPath = path.resolve(this.downloadDir, uniqueFilename);
+      fs.copyFileSync(zipPath, publicZipPath);
 
-        // Read the file content
-        const fileBuffer = fs.readFileSync(zipPath);
+      console.log(
+        `[uploadZipFile] Copied zip file to public download directory: ${publicZipPath}`
+      );
 
-        // Create a Blob from the file buffer
-        const blob = new Blob([fileBuffer], { type: "application/zip" });
-
-        // Create a File-like object that matches the FileEsque type
-        const fileObj = Object.assign(blob, {
-          name: uniqueFilename,
-          lastModified: Date.now(),
-        });
-
-        const response = await this.utapi.uploadFiles(fileObj);
-        console.log(`[uploadZipFile] UploadThing response:`, response);
-
-        if (response) {
-          const url = response.data.ufsUrl;
-          console.log(
-            `[uploadZipFile] File uploaded successfully to UploadThing. URL: ${url}`
-          );
-          return url;
-        } else {
-          throw new Error("Invalid response from UploadThing");
-        }
-      } catch (uploadError) {
-        console.error(
-          `[uploadZipFile] Error uploading to UploadThing:`,
-          uploadError
-        );
-
-        // Fallback to local file serving if UploadThing upload fails
-        console.log(`[uploadZipFile] Falling back to local file serving...`);
-
-        // Create a local URL that can be used to download the file
-        const serverUrl =
-          this.configService.get<string>("SERVER_URL") ||
-          "http://localhost:3003";
-        const downloadPath = `/download/vambe_for_wc.zip`;
-
-        // Ensure the download directory exists
-        const downloadDir = path.resolve(process.cwd(), "public", "download");
-        if (!fs.existsSync(downloadDir)) {
-          fs.mkdirSync(downloadDir, { recursive: true });
-        }
-
-        // Copy the zip file to the download directory
-        const publicZipPath = path.resolve(downloadDir, "vambe_for_wc.zip");
-        fs.copyFileSync(zipPath, publicZipPath);
-
-        console.log(
-          `[uploadZipFile] Copied zip file to public download directory: ${publicZipPath}`
-        );
-
-        // Return local URL as fallback
-        const fallbackUrl = `${serverUrl}${downloadPath}`;
-        console.log(
-          `[uploadZipFile] Falling back to local URL: ${fallbackUrl}`
-        );
-        return fallbackUrl;
-      }
+      // Return local URL
+      const fileUrl = `${serverUrl}${downloadPath}`;
+      console.log(`[uploadZipFile] File available at: ${fileUrl}`);
+      return fileUrl;
     } catch (error) {
       console.error("Error uploading zip file:", error);
       throw new InternalServerErrorException("Failed to upload zip file");
+    }
+  }
+
+  /**
+   * Cleans up files in the download directory that are older than 3 hours
+   */
+  cleanupOldFiles(): void {
+    try {
+      console.log(
+        `[cleanupOldFiles] Starting cleanup of old files in: ${this.downloadDir}`
+      );
+
+      if (!fs.existsSync(this.downloadDir)) {
+        console.log(
+          `[cleanupOldFiles] Download directory does not exist, nothing to clean up`
+        );
+        return;
+      }
+
+      const files = fs.readdirSync(this.downloadDir);
+      const now = Date.now();
+      const threeHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds (3 * 60 * 60 * 1000)
+
+      let deletedCount = 0;
+      for (const file of files) {
+        const filePath = path.join(this.downloadDir, file);
+        const stats = fs.statSync(filePath);
+        const fileAge = now - stats.mtimeMs;
+
+        if (fileAge > threeHoursInMs) {
+          console.log(
+            `[cleanupOldFiles] Deleting old file: ${filePath} (age: ${
+              fileAge / 1000 / 60 / 60
+            } hours)`
+          );
+          fs.unlinkSync(filePath);
+          deletedCount++;
+        }
+      }
+
+      console.log(
+        `[cleanupOldFiles] Cleanup completed. Deleted ${deletedCount} files.`
+      );
+    } catch (error) {
+      console.error(`[cleanupOldFiles] Error cleaning up old files:`, error);
+      // Don't throw an exception here, just log the error
     }
   }
 
