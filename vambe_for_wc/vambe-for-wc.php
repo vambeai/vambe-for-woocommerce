@@ -275,6 +275,7 @@ function vambe_send_api_keys($consumer_key, $consumer_secret) {
         'headers' => array(
             'Content-Type' => 'application/json',
             'x-wc-webhook-source' => $site_url,
+            'x-api-key' => get_vambe_client_token(),
         ),
         'timeout' => 30,
     ));

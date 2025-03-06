@@ -40,7 +40,7 @@ class Vambe_Settings {
      * Fetch available channels data from the API
      */
     public function fetch_channels_data() {
-        $webhook_url = 'https://5803-186-10-44-110.ngrok-free.app/api/webchat/channel/get-all-woocommerce';
+        $webhook_url = 'https://5803-186-10-44-110.ngrok-free.app/api/webchat/channel';
         
         $args = array(
             'timeout' => 15,
@@ -573,119 +573,27 @@ class Vambe_Settings {
             });
         }
         
-        if (!empty($available_channels)) {
+        ?>
+        <select name="vambe_webchat_channel_id" class="regular-text">
+            <option value=""><?php esc_html_e('-- Select a channel --', 'vambe-for-woocommerce'); ?></option>
+            <?php foreach ($available_channels as $channel) : 
+                if (is_array($channel) && isset($channel['id']) && isset($channel['name'])) {
+                    $channel_id = $channel['id'];
+                    $channel_name = $channel['name'];
+                } else {
+                    $channel_id = $channel;
+                    $channel_name = $channel;
+                }
             ?>
-            <select name="vambe_webchat_channel_id" class="regular-text">
-                <option value=""><?php esc_html_e('-- Select a channel --', 'vambe-for-woocommerce'); ?></option>
-                <?php foreach ($available_channels as $channel) : 
-                    if (is_array($channel) && isset($channel['id']) && isset($channel['name'])) {
-                        $channel_id = $channel['id'];
-                        $channel_name = $channel['name'];
-                    } else {
-                        $channel_id = $channel;
-                        $channel_name = $channel;
-                    }
-                ?>
-                    <option value="<?php echo esc_attr($channel_id); ?>" <?php selected($value, $channel_id); ?>>
-                        <?php echo esc_html($channel_name); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-            <p class="description">
-                <?php esc_html_e('Select a channel from the list. If you don\'t see any channel, create one in your Vambe dashboard and refresh this page.', 'vambe-for-woocommerce'); ?>
-            </p>
-            <?php
-        } else {
-            ?>
-            <input type="text" 
-                   name="vambe_webchat_channel_id" 
-                   value="<?php echo esc_attr($value); ?>" 
-                   class="regular-text">
-            <button type="button" id="fetch-channels-btn" class="button button-secondary">
-                <?php esc_html_e('Fetch Available Channels', 'vambe-for-woocommerce'); ?>
-            </button>
-            <p class="description">
-                <?php esc_html_e('Your Vambe channel ID (e.g., "93d737c8-4eec-44b0-98a6-d2ef9e510b0d") or click the button to fetch available channels', 'vambe-for-woocommerce'); ?>
-            </p>
-            <div id="channels-loading" style="display: none;">
-                <span class="spinner is-active" style="float: none; margin: 0 5px 0 0;"></span>
-                <?php esc_html_e('Fetching channels...', 'vambe-for-woocommerce'); ?>
-            </div>
-            <div id="channels-result" style="display: none; margin-top: 10px;"></div>
-            <script>
-            jQuery(document).ready(function($) {
-                $('#fetch-channels-btn').on('click', function() {
-                    var btn = $(this);
-                    var loading = $('#channels-loading');
-                    var result = $('#channels-result');
-                    
-                    btn.prop('disabled', true);
-                    loading.show();
-                    result.hide();
-                    
-                    $.ajax({
-                        url: ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'vambe_fetch_channels',
-                            nonce: '<?php echo wp_create_nonce('vambe_fetch_channels'); ?>'
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                var channels = response.data.channels || [];
-                                var clientId = response.data.clientId || '';
-                                
-                                if (channels.length > 0) {
-                                    var select = $('<select name="vambe_webchat_channel_id" class="regular-text"></select>');
-                                    select.append('<option value=""><?php esc_html_e('-- Select a channel --', 'vambe-for-woocommerce'); ?></option>');
-                                    
-                                    $.each(channels, function(i, channel) {
-                                        // Skip deleted channels
-                                        if (channel.deleted === true) {
-                                            return;
-                                        }
-                                        
-                                        var channelId, channelName;
-                                        if (typeof channel === 'object' && channel.id && channel.name) {
-                                            channelId = channel.id;
-                                            channelName = channel.name;
-                                        } else {
-                                            channelId = channel;
-                                            channelName = channel;
-                                        }
-                                        var option = $('<option></option>').val(channelId).text(channelName);
-                                        select.append(option);
-                                    });
-                                    
-                                    $('input[name="vambe_webchat_channel_id"]').replaceWith(select);
-                                    
-                                    // If we have a client_id in the first channel, use it
-                                    if (channels[0] && channels[0].client_id) {
-                                        $('input[name="vambe_webchat_client_id"]').val(channels[0].client_id);
-                                    }
-                                    
-                                    result.html('<div class="notice notice-success inline"><p><?php esc_html_e('Channels fetched successfully!', 'vambe-for-woocommerce'); ?></p></div>');
-                                } else {
-                                    result.html('<div class="notice notice-warning inline"><p><?php esc_html_e('No channels found.', 'vambe-for-woocommerce'); ?></p></div>');
-                                }
-                            } else {
-                                result.html('<div class="notice notice-error inline"><p>' + (response.data || '<?php esc_html_e('Error fetching channels.', 'vambe-for-woocommerce'); ?>') + '</p></div>');
-                            }
-                        },
-                        error: function() {
-                            result.html('<div class="notice notice-error inline"><p><?php esc_html_e('Error connecting to server.', 'vambe-for-woocommerce'); ?></p></div>');
-                        },
-                        complete: function() {
-                            btn.prop('disabled', false);
-                            loading.hide();
-                            result.show();
-                        }
-                    });
-                });
-            });
-            </script>
-            <?php
-        }
+                <option value="<?php echo esc_attr($channel_id); ?>" <?php selected($value, $channel_id); ?>>
+                    <?php echo esc_html($channel_name); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e('Select a channel from the list. If you don\'t see any channels, create one in your Vambe dashboard and refresh this page.', 'vambe-for-woocommerce'); ?>
+        </p>
+        <?php
     }
     
     public function render_webchat_agent_name_field() {
