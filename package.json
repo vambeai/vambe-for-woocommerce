@@ -1,0 +1,16 @@
+{
+  "name": "vambe-for-woocommerce-monorepo",
+  "version": "1.0.0",
+  "description": "Monorepo for Vambe WooCommerce Plugin and Server",
+  "private": true,
+  "workspaces": [
+    "server"
+  ],
+  "scripts": {
+    "start": "cd server && pnpm start:prod",
+    "build": "cd server && pnpm build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

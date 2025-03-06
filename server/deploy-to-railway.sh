@@ -6,9 +6,11 @@ echo "Preparing to deploy to Railway..."
 
 # Ensure we're in the server directory
 cd "$(dirname "$0")"
+SERVER_DIR=$(pwd)
+PROJECT_ROOT=$(dirname "$SERVER_DIR")
 
 # Check if the vambe_for_wc directory exists at the project root
-if [ ! -d "../vambe_for_wc" ]; then
+if [ ! -d "$PROJECT_ROOT/vambe_for_wc" ]; then
   echo "Error: vambe_for_wc directory not found at the project root."
   exit 1
 fi
@@ -18,9 +20,19 @@ echo "Creating temporary deployment directory..."
 TEMP_DIR=$(mktemp -d)
 echo "Temporary directory: $TEMP_DIR"
 
+# Copy root project files to the temp directory
+echo "Copying project files..."
+cp "$PROJECT_ROOT/package.json" "$TEMP_DIR/"
+cp "$PROJECT_ROOT/pnpm-workspace.yaml" "$TEMP_DIR/"
+cp "$PROJECT_ROOT/railway.json" "$TEMP_DIR/"
+
+# Create server directory in the temp directory
+echo "Creating server directory in the deployment package..."
+mkdir -p "$TEMP_DIR/server"
+
 # Copy server files to the temp directory
 echo "Copying server files..."
-cp -r ./* "$TEMP_DIR/"
+cp -r "$SERVER_DIR"/* "$TEMP_DIR/server/"
 
 # Create vambe_for_wc directory in the temp directory
 echo "Creating vambe_for_wc directory in the deployment package..."
@@ -28,10 +40,14 @@ mkdir -p "$TEMP_DIR/vambe_for_wc"
 
 # Copy vambe_for_wc files to the temp directory
 echo "Copying vambe_for_wc files..."
-cp -r ../vambe_for_wc/* "$TEMP_DIR/vambe_for_wc/"
+cp -r "$PROJECT_ROOT/vambe_for_wc"/* "$TEMP_DIR/vambe_for_wc/"
 
 # Navigate to the temp directory
 cd "$TEMP_DIR"
+
+# Install dependencies
+echo "Installing dependencies..."
+pnpm install
 
 # Check if Railway CLI is installed
 if ! command -v railway &> /dev/null; then

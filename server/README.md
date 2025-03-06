@@ -26,7 +26,7 @@ This server provides functionality for generating customized Vambe WooCommerce p
    railway login
    ```
 
-2. Run the deployment script:
+2. Run the deployment script from the server directory:
 
    ```
    ./deploy-to-railway.sh
@@ -34,17 +34,27 @@ This server provides functionality for generating customized Vambe WooCommerce p
 
    This script will:
 
-   - Create a temporary deployment package
+   - Create a temporary deployment package with the proper monorepo structure
    - Include both the server and the vambe_for_wc plugin directory
+   - Install dependencies using pnpm
    - Deploy to Railway
    - Clean up temporary files
 
 ### Option 2: Manual Deployment
 
 1. Create a temporary directory for deployment
-2. Copy both the server files and the vambe_for_wc directory into it
-3. Make sure the vambe_for_wc directory is at the same level as the server files
-4. Deploy using the Railway CLI or dashboard
+2. Set up the monorepo structure:
+   ```
+   temp-dir/
+   ├── package.json             # Root package.json with workspaces
+   ├── pnpm-workspace.yaml      # PNPM workspace config
+   ├── railway.json             # Railway config
+   ├── .npmrc                   # PNPM config
+   ├── server/                  # Server code
+   └── vambe_for_wc/            # Plugin code
+   ```
+3. Copy all necessary files maintaining this structure
+4. Deploy using the Railway CLI: `railway up`
 
 ## Environment Variables
 
