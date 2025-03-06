@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install dependencies for crypto support
+RUN apk add --no-cache libc6-compat
+
 # Install pnpm
 RUN npm install -g pnpm
 
