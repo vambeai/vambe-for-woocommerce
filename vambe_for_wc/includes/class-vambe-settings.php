@@ -249,8 +249,8 @@ class Vambe_Settings {
             </div>
             
             <div class="vambe-tabs">
-                <button class="vambe-tab-link" data-tab="cart-tracking"><?php esc_html_e('Cart Tracking (Beta)', 'vambe-for-woocommerce'); ?></button>
                 <button class="vambe-tab-link active" data-tab="webchat"><?php esc_html_e('Webchat', 'vambe-for-woocommerce'); ?></button>
+                <button class="vambe-tab-link" data-tab="cart-tracking"><?php esc_html_e('Cart Tracking (Beta)', 'vambe-for-woocommerce'); ?></button>
             </div>
             
             <form method="post" action="options.php">
