@@ -177,7 +177,7 @@ export class PluginService {
       );
 
       // Replace the placeholder with the actual client API key
-      const regex = /['"]{{CLIENT_TOKEN}}['"]/;
+      const regex = /['"]{{VAMBE_CLIENT_TOKEN}}['"]/;
       const replacement = `'${clientApiKey}'`;
 
       if (regex.test(content)) {
@@ -305,7 +305,7 @@ export class PluginService {
         // Create a local URL that can be used to download the file
         const serverUrl =
           this.configService.get<string>("SERVER_URL") ||
-          "http://localhost:3000";
+          "http://localhost:3003";
         const downloadPath = `/download/vambe_for_wc.zip`;
 
         // Ensure the download directory exists

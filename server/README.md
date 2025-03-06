@@ -5,7 +5,7 @@ This is a NestJS server that provides an API endpoint for downloading a customiz
 ## Features
 
 - Protected API endpoint with API key authentication
-- Dynamically replaces the `{{CLIENT_TOKEN}}` placeholder in the plugin with a client-specific API key
+- Dynamically replaces the `{{VAMBE_CLIENT_TOKEN}}` placeholder in the plugin with a client-specific API key
 - Compresses the plugin into a zip file
 - Uploads the zip file to UploadThing
 - Returns the URL to the uploaded file
@@ -85,7 +85,7 @@ POST /plugin/download
 
 1. The server receives a request with a client API key
 2. It creates a copy of the Vambe WooCommerce plugin
-3. It replaces the `{{CLIENT_TOKEN}}` placeholder in the plugin with the provided client API key
+3. It replaces the `{{VAMBE_CLIENT_TOKEN}}` placeholder in the plugin with the provided client API key
 4. It compresses the modified plugin into a zip file
 5. It uploads the zip file to UploadThing
 6. It returns the URL to the uploaded file

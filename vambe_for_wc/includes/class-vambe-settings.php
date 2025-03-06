@@ -47,6 +47,7 @@ class Vambe_Settings {
             'headers' => array(
                 'x-wc-webhook-source' => get_site_url(),
                 'Content-Type' => 'application/json',
+                'x-api-key' => get_vambe_client_token(),
             ),
         );
         
@@ -60,9 +61,9 @@ class Vambe_Settings {
                 // Store the data in a transient for 1 hour
                 set_transient('vambe_channels_data', $data, HOUR_IN_SECONDS);
                 
-                // Update client ID in options
-                if (isset($data['clientId']) && !empty($data['clientId'])) {
-                    update_option('vambe_webchat_client_id', $data['clientId']);
+                // Extract client ID from the first channel if available
+                if (!empty($data) && isset($data[0]['client_id'])) {
+                    update_option('vambe_webchat_client_id', $data[0]['client_id']);
                 }
             }
         }
@@ -565,8 +566,11 @@ class Vambe_Settings {
         $channels_data = get_transient('vambe_channels_data');
         $available_channels = array();
         
-        if ($channels_data && isset($channels_data['channels']) && is_array($channels_data['channels'])) {
-            $available_channels = $channels_data['channels'];
+        if ($channels_data && is_array($channels_data)) {
+            // Filter out deleted channels
+            $available_channels = array_filter($channels_data, function($channel) {
+                return !(isset($channel['deleted']) && $channel['deleted'] === true);
+            });
         }
         
         if (!empty($available_channels)) {
@@ -574,7 +578,6 @@ class Vambe_Settings {
             <select name="vambe_webchat_channel_id" class="regular-text">
                 <option value=""><?php esc_html_e('-- Select a channel --', 'vambe-for-woocommerce'); ?></option>
                 <?php foreach ($available_channels as $channel) : 
-                    // Check if channel is an object with id and name properties
                     if (is_array($channel) && isset($channel['id']) && isset($channel['name'])) {
                         $channel_id = $channel['id'];
                         $channel_name = $channel['name'];
@@ -637,7 +640,11 @@ class Vambe_Settings {
                                     select.append('<option value=""><?php esc_html_e('-- Select a channel --', 'vambe-for-woocommerce'); ?></option>');
                                     
                                     $.each(channels, function(i, channel) {
-                                        // Check if channel is an object with id and name properties
+                                        // Skip deleted channels
+                                        if (channel.deleted === true) {
+                                            return;
+                                        }
+                                        
                                         var channelId, channelName;
                                         if (typeof channel === 'object' && channel.id && channel.name) {
                                             channelId = channel.id;
@@ -652,8 +659,9 @@ class Vambe_Settings {
                                     
                                     $('input[name="vambe_webchat_channel_id"]').replaceWith(select);
                                     
-                                    if (clientId) {
-                                        $('input[name="vambe_webchat_client_id"]').val(clientId);
+                                    // If we have a client_id in the first channel, use it
+                                    if (channels[0] && channels[0].client_id) {
+                                        $('input[name="vambe_webchat_client_id"]').val(channels[0].client_id);
                                     }
                                     
                                     result.html('<div class="notice notice-success inline"><p><?php esc_html_e('Channels fetched successfully!', 'vambe-for-woocommerce'); ?></p></div>');

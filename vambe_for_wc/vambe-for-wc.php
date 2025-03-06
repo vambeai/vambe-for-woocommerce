@@ -31,8 +31,8 @@ function vambe_get_cart_timeout() {
     return $hours * HOUR_IN_SECONDS;  // Convert hours to seconds using WordPress constant
 }
 
-function get_client_token() {
-    return '{{CLIENT_TOKEN}}'; // Esto será reemplazado dinámicamente
+function get_vambe_client_token() {
+    return '{{VAMBE_CLIENT_TOKEN}}'; // Esto será reemplazado dinámicamente
 }
 
 
@@ -313,13 +313,14 @@ function vambe_ajax_fetch_channels() {
         return;
     }
     
-    $webhook_url = 'https://5803-186-10-44-110.ngrok-free.app/api/webchat/channel/get-all-woocommerce';
+    $webhook_url = 'https://5803-186-10-44-110.ngrok-free.app/api/webchat/channel';
     
     $args = array(
         'timeout' => 15,
         'headers' => array(
             'x-wc-webhook-source' => get_site_url(),
             'Content-Type' => 'application/json',
+            'x-api-key' => get_vambe_client_token(),
         ),
     );
     
@@ -344,8 +345,21 @@ function vambe_ajax_fetch_channels() {
         return;
     }
     
+    // Filter out deleted channels
+    $filtered_data = array_filter($data, function($channel) {
+        return !(isset($channel['deleted']) && $channel['deleted'] === true);
+    });
+    
+    // Reset array keys after filtering
+    $filtered_data = array_values($filtered_data);
+    
     // Store the data in a transient for 1 hour
     set_transient('vambe_channels_data', $data, HOUR_IN_SECONDS);
+    
+    // Extract client ID from the first non-deleted channel if available
+    if (!empty($filtered_data) && isset($filtered_data[0]['client_id'])) {
+        update_option('vambe_webchat_client_id', $filtered_data[0]['client_id']);
+    }
     
     wp_send_json_success($data);
 }
