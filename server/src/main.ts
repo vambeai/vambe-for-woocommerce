@@ -5,8 +5,6 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import * as express from "express";
 import * as path from "path";
 import * as fs from "fs";
-import * as crypto from "crypto";
-import { getRandomId, getRandomValues } from "./crypto-util";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -85,32 +83,6 @@ async function bootstrap() {
 
     // Explicitly log the port we're using
     logger.log(`Using PORT: ${port}`);
-
-    // Monkey-patch the crypto functionality needed by ScheduleModule
-    // Instead of replacing global.crypto, we add the specific methods needed
-    if (typeof global.crypto === "object") {
-      // If crypto exists but doesn't have randomUUID, add it
-      if (!global.crypto.randomUUID) {
-        Object.defineProperty(global.crypto, "randomUUID", {
-          value: getRandomId,
-          configurable: true,
-          enumerable: true,
-        });
-        logger.log("Added randomUUID to global.crypto");
-      }
-
-      // If crypto exists but doesn't have getRandomValues, add it
-      if (!global.crypto.getRandomValues) {
-        Object.defineProperty(global.crypto, "getRandomValues", {
-          value: getRandomValues,
-          configurable: true,
-          enumerable: true,
-        });
-        logger.log("Added getRandomValues to global.crypto");
-      }
-    } else {
-      logger.warn("global.crypto is not an object, cannot add methods");
-    }
 
     // Bind to all interfaces (0.0.0.0) to ensure Railway can route traffic
     await app.listen(port, "0.0.0.0");

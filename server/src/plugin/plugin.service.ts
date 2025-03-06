@@ -6,7 +6,6 @@ import {
   OnModuleDestroy,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { Cron } from "@nestjs/schedule";
 import * as fs from "fs";
 import * as path from "path";
 import * as AdmZip from "adm-zip";
@@ -258,11 +257,28 @@ export class PluginService {
     }
   }
 
-  // Run cleanup every hour using cron
-  @Cron("0 * * * *")
-  handleCronCleanup() {
-    console.log("[PluginService] Running scheduled cleanup via cron");
+  // Cleanup interval reference
+  private cleanupInterval: NodeJS.Timeout;
+
+  onModuleInit() {
+    // Set up cleanup to run every hour using setInterval instead of cron
+    console.log("[PluginService] Setting up cleanup interval");
+    this.cleanupInterval = setInterval(() => {
+      console.log("[PluginService] Running scheduled cleanup via interval");
+      this.cleanupOldFiles();
+    }, 60 * 60 * 1000); // 1 hour in milliseconds
+
+    // Run initial cleanup
+    console.log("[PluginService] Running initial cleanup");
     this.cleanupOldFiles();
+  }
+
+  onModuleDestroy() {
+    // Clean up the interval when the module is destroyed
+    if (this.cleanupInterval) {
+      console.log("[PluginService] Clearing cleanup interval");
+      clearInterval(this.cleanupInterval);
+    }
   }
 
   private async uploadZipFile(zipPath: string): Promise<string> {
