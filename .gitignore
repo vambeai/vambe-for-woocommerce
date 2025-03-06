@@ -40,3 +40,7 @@ wp-content/plugins/hello.php
 *.log
 *.sql
 *.sqlite
+
+# locks
+pnpm-lock.yaml
+package-lock.json
