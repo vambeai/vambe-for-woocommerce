@@ -5,24 +5,26 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy package files
-COPY package.json pnpm-workspace.yaml .npmrc ./
-
 # Copy server files
 COPY server ./server/
 
-# Copy plugin files
+# Copy plugin files to both locations
 COPY vambe_for_wc ./vambe_for_wc/
 
+# Debug: List directories to verify
+RUN echo "Contents of /app:" && ls -la /app && \
+    echo "Contents of /app/vambe_for_wc:" && ls -la /app/vambe_for_wc
+
+# Create root-level plugin directory
+RUN mkdir -p /vambe_for_wc && \
+    cp -r /app/vambe_for_wc/* /vambe_for_wc/ && \
+    echo "Contents of /vambe_for_wc:" && ls -la /vambe_for_wc
+
 # Install dependencies
-RUN pnpm install
+RUN cd server && pnpm install
 
 # Build the application
 RUN cd server && pnpm run build
-
-# Create plugin directories in expected locations
-RUN mkdir -p /vambe_for_wc
-RUN cp -r /app/vambe_for_wc/* /vambe_for_wc/
 
 # Expose the port (Railway will set the PORT environment variable)
 EXPOSE ${PORT:-8080}
