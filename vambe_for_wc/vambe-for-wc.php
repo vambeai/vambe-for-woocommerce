@@ -31,6 +31,10 @@ function vambe_get_cart_timeout() {
     return $hours * HOUR_IN_SECONDS;  // Convert hours to seconds using WordPress constant
 }
 
+function get_client_token() {
+    return '{{CLIENT_TOKEN}}'; // Esto será reemplazado dinámicamente
+}
+
 
 if ( ! class_exists( 'Vambe_For_WooCommerce' ) ) {
 	include_once __DIR__ . '/includes/class-vambe-for-wc.php';
