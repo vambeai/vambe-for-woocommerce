@@ -290,8 +290,8 @@ export class PluginService {
         const response = await this.utapi.uploadFiles(fileObj);
         console.log(`[uploadZipFile] UploadThing response:`, response);
 
-        if (response && response[0] && response[0].data) {
-          const url = response[0].data.url;
+        if (response) {
+          const url = response.data.ufsUrl;
           console.log(
             `[uploadZipFile] File uploaded successfully to UploadThing. URL: ${url}`
           );
