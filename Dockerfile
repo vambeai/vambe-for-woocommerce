@@ -26,8 +26,16 @@ RUN cd server && pnpm install
 # Build the application
 RUN cd server && pnpm run build
 
+# Create necessary directories for runtime
+RUN mkdir -p /app/public/download && \
+    chmod -R 777 /app/public
+
 # Expose the port (Railway will set the PORT environment variable)
 EXPOSE ${PORT:-8080}
 
-# Start the application
-CMD ["sh", "-c", "cd server && pnpm run start:prod"]
+# Set environment variables with defaults
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Start the application with proper logging
+CMD ["sh", "-c", "cd server && NODE_OPTIONS='--max-old-space-size=512' pnpm run start:prod"]

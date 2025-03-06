@@ -1,6 +1,6 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
-import { Logger } from "@nestjs/common";
+import { Logger, INestApplication } from "@nestjs/common";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import * as express from "express";
 import * as path from "path";
@@ -38,6 +38,22 @@ async function bootstrap() {
     // Enable CORS
     app.enableCors();
 
+    // Add a root-level health check endpoint
+    app.use("/", (req, res, next) => {
+      if (req.method === "GET" && req.url === "/") {
+        logger.log("Root health check endpoint called");
+        return res.json({
+          status: "ok",
+          service: "vambe-for-woocommerce",
+          environment: process.env.NODE_ENV || "development",
+          timestamp: new Date().toISOString(),
+          port: process.env.PORT || 3003,
+          workingDirectory: process.cwd(),
+        });
+      }
+      next();
+    });
+
     // Log middleware for request debugging
     app.use((req, res, next) => {
       logger.log(`Incoming request: ${req.method} ${req.url}`);
@@ -62,10 +78,16 @@ async function bootstrap() {
       next();
     });
 
+    // Railway sets the PORT environment variable
     const port = process.env.PORT || 3003;
+
+    // Explicitly log the port we're using
+    logger.log(`Using PORT: ${port}`);
+
+    // Bind to all interfaces (0.0.0.0) to ensure Railway can route traffic
     await app.listen(port, "0.0.0.0");
 
-    logger.log(`Application is running on: http://localhost:${port}`);
+    logger.log(`Application is running on: http://0.0.0.0:${port}`);
     logger.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 
     // Check for plugin directory in various possible locations
