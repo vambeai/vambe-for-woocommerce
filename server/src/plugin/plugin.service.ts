@@ -23,6 +23,10 @@ export class PluginService {
       path.resolve(process.cwd(), "../../vambe_for_wc"),
       path.resolve(process.cwd(), "../../../vambe_for_wc"),
       path.resolve(process.cwd(), "../../../../vambe_for_wc"),
+      // Railway deployment paths
+      "/vambe_for_wc",
+      "/app/vambe_for_wc",
+      path.resolve("/app", "../vambe_for_wc"),
     ];
 
     console.log("[PluginService] Current working directory:", process.cwd());

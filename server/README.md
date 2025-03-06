@@ -1,96 +1,63 @@
 # Vambe WooCommerce Plugin Server
 
-This is a NestJS server that provides an API endpoint for downloading a customized version of the Vambe WooCommerce plugin with a client-specific API key.
+This server provides functionality for generating customized Vambe WooCommerce plugins with client-specific API keys.
 
-## Features
-
-- Protected API endpoint with API key authentication
-- Dynamically replaces the `{{VAMBE_CLIENT_TOKEN}}` placeholder in the plugin with a client-specific API key
-- Compresses the plugin into a zip file
-- Uploads the zip file to UploadThing
-- Returns the URL to the uploaded file
-
-## Prerequisites
-
-- Node.js (v16 or higher)
-- pnpm
-
-## Installation
+## Development Setup
 
 1. Clone the repository
-2. Navigate to the server directory
-3. Install dependencies:
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Create a `.env` file based on `.env.example` and fill in your API keys
+4. Start the development server:
+   ```
+   npm run start:dev
+   ```
 
-```bash
-pnpm install
-```
+## Deploying to Railway
 
-4. Configure environment variables:
+### Option 1: Using the Deployment Script (Recommended)
 
-Copy the `.env.example` file to `.env` and update the values:
+1. Make sure you have the Railway CLI installed:
 
-```
-# API key for protecting the endpoint
-API_KEY=your_api_key_here
+   ```
+   npm i -g @railway/cli
+   railway login
+   ```
 
-# UploadThing API keys
-UPLOADTHING_SECRET=your_uploadthing_secret_here
-UPLOADTHING_APP_ID=your_uploadthing_app_id_here
-```
+2. Run the deployment script:
 
-## Running the server
+   ```
+   ./deploy-to-railway.sh
+   ```
 
-### Development mode
+   This script will:
 
-```bash
-pnpm start:dev
-```
+   - Create a temporary deployment package
+   - Include both the server and the vambe_for_wc plugin directory
+   - Deploy to Railway
+   - Clean up temporary files
 
-### Production mode
+### Option 2: Manual Deployment
 
-```bash
-pnpm build
-pnpm start:prod
-```
+1. Create a temporary directory for deployment
+2. Copy both the server files and the vambe_for_wc directory into it
+3. Make sure the vambe_for_wc directory is at the same level as the server files
+4. Deploy using the Railway CLI or dashboard
 
-## API Endpoints
+## Environment Variables
 
-### Download Plugin
+The following environment variables need to be set in Railway:
 
-```
-POST /plugin/download
-```
+- `API_KEY`: Your API key for protecting the endpoint
+- `UPLOADTHING_SECRET`: Your UploadThing secret key
+- `UPLOADTHING_APP_ID`: Your UploadThing app ID
+- `SERVER_URL`: The URL of your deployed server (e.g., https://your-app.railway.app)
 
-#### Headers
+## Project Structure
 
-- `x-api-key`: Your API key for authentication
-
-#### Request Body
-
-```json
-{
-  "client_api_key": "client_specific_api_key_here"
-}
-```
-
-#### Response
-
-```json
-{
-  "url": "https://uploadthing.com/f/example-file-url.zip"
-}
-```
-
-## How it works
-
-1. The server receives a request with a client API key
-2. It creates a copy of the Vambe WooCommerce plugin
-3. It replaces the `{{VAMBE_CLIENT_TOKEN}}` placeholder in the plugin with the provided client API key
-4. It compresses the modified plugin into a zip file
-5. It uploads the zip file to UploadThing
-6. It returns the URL to the uploaded file
-7. It cleans up temporary files
-
-## License
-
-ISC
+- `src/`: Source code
+  - `main.ts`: Application entry point
+  - `app.module.ts`: Main application module
+  - `plugin/`: Plugin module for handling plugin generation and downloads
