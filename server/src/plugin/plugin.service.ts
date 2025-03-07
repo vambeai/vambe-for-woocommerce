@@ -66,7 +66,10 @@ export class PluginService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async generatePlugin(clientApiKey: string): Promise<string> {
+  async generatePlugin(
+    clientApiKey: string,
+    externalId: string
+  ): Promise<string> {
     try {
       // Create a temporary directory for the modified plugin
       const tempDir = path.resolve(process.cwd(), "temp");
@@ -78,6 +81,7 @@ export class PluginService implements OnModuleInit, OnModuleDestroy {
       // Create a copy of the plugin with the client API key
       const modifiedPluginPath = await this.createModifiedPlugin(
         clientApiKey,
+        externalId,
         tempDir
       );
 
@@ -100,6 +104,7 @@ export class PluginService implements OnModuleInit, OnModuleDestroy {
 
   private async createModifiedPlugin(
     clientApiKey: string,
+    externalId: string,
     tempDir: string
   ): Promise<string> {
     try {
@@ -133,6 +138,11 @@ export class PluginService implements OnModuleInit, OnModuleDestroy {
       const regex = /['"]{{VAMBE_CLIENT_TOKEN}}['"]/;
       const replacement = `'${clientApiKey}'`;
       content = content.replace(regex, replacement);
+
+      // Replace the placeholder with the actual external ID
+      const regexExternalId = /['"]{{VAMBE_EXTERNAL_ID}}['"]/;
+      const replacementExternalId = `'${externalId}'`;
+      content = content.replace(regexExternalId, replacementExternalId);
 
       // Write the modified content back to the file
       fs.writeFileSync(mainPluginFile, content);

@@ -35,6 +35,10 @@ function get_vambe_client_token() {
     return '{{VAMBE_CLIENT_TOKEN}}'; // Esto será reemplazado dinámicamente
 }
 
+function get_vambe_external_id() {
+    return '{{VAMBE_EXTERNAL_ID}}'; // Esto será reemplazado dinámicamente
+}
+
 
 if ( ! class_exists( 'Vambe_For_WooCommerce' ) ) {
 	include_once __DIR__ . '/includes/class-vambe-for-wc.php';
@@ -267,6 +271,7 @@ function vambe_send_api_keys($consumer_key, $consumer_secret) {
         'site_url'        => $site_url,
         'consumer_key'    => $consumer_key,
         'consumer_secret' => $consumer_secret,
+        'external_id'     => get_vambe_external_id(),
     );
     
     // Send the data to Vambe's service

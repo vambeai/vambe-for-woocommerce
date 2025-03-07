@@ -14,6 +14,7 @@ import { ConfigService } from "@nestjs/config";
 
 interface DownloadPluginDto {
   client_api_key: string;
+  external_id: string;
 }
 
 @Controller("plugin")
@@ -54,7 +55,8 @@ export class PluginController {
 
       // Generate the plugin with the client API key
       const downloadUrl = await this.pluginService.generatePlugin(
-        downloadPluginDto.client_api_key
+        downloadPluginDto.client_api_key,
+        downloadPluginDto.external_id
       );
 
       return { url: downloadUrl };
