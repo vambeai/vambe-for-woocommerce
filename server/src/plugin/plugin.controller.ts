@@ -53,6 +53,10 @@ export class PluginController {
         throw new BadRequestException("Client API key is required");
       }
 
+      if (!downloadPluginDto.external_id) {
+        throw new BadRequestException("External ID is required");
+      }
+
       // Generate the plugin with the client API key
       const downloadUrl = await this.pluginService.generatePlugin(
         downloadPluginDto.client_api_key,
