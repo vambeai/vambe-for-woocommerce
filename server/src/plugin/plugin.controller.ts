@@ -63,6 +63,15 @@ export class PluginController {
         downloadPluginDto.external_id
       );
 
+      this.logger.log(
+        `Plugin generated successfully: 
+        {
+          url: ${downloadUrl},
+          external_id: ${downloadPluginDto.external_id},
+          client_api_key: ${downloadPluginDto.client_api_key}
+        }`
+      );
+
       return { url: downloadUrl };
     } catch (error) {
       this.logger.error(`Error in downloadPlugin: ${error.message}`);
